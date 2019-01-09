@@ -1,5 +1,7 @@
 -module(miniature_engine_websocket_handler).
 
+-include_lib("kernel/include/logger.hrl").
+
 -behaviour(cowboy_websocket).
 
 -export([
@@ -16,7 +18,7 @@ init(Req, State) ->
     Qs = cowboy_req:parse_qs(Req),
     Ua = cowboy_req:header(<<"user-agent">>, Req),
     Token = proplists:get_value(<<"token">>, Qs),
-    io:format("Token is ~p~n", [Token]),
+    ?LOG_DEBUG("Token is ~p", [Token]),
     {ok, #{<<"user_uid">> := User}} = jwt:decode(Token, ?JWT_KEY),
     {cowboy_websocket, Req, [{user, User}, {ua, Ua}] ++ State}.
 
@@ -27,13 +29,13 @@ websocket_init(State) ->
     {ok, [{ping_timer, TRef} | State]}.
 
 websocket_handle(ping, State) ->
-    io:format("ping received~n"),
+    ?LOG_DEBUG("ping received"),
     {reply, pong, State};
 websocket_handle(pong, State) ->
-    io:format("pong received~n"),
+    ?LOG_DEBUG("pong received"),
     {ok, State};
 websocket_handle({text, Message}, State) ->
-    io:format("Text message received ~p~n", [Message]),
+    ?LOG_DEBUG("Text message received ~p", [Message]),
     User = proplists:get_value(user, State),
     Reply = case produce(User, Message) of
         ok ->
@@ -41,25 +43,25 @@ websocket_handle({text, Message}, State) ->
         {error, timeout} ->
             <<"Timeout">>;
         {error, {producer_down, Reason}} ->
-            io:format("Producer down: ~p~n", [Reason]),
+            ?LOG_DEBUG("Producer down: ~p", [Reason]),
             <<"Internal Error">>
     end,
-    io:format("Reply ~s~n", [Reply]),
+    ?LOG_DEBUG("Reply ~s", [Reply]),
     {reply, {text, Reply}, State};
 websocket_handle(InFrame, State) ->
-    io:format("In frame: ~p~n", [InFrame]),
+    ?LOG_DEBUG("In frame: ~p", [InFrame]),
     {ok, State}.
 
 websocket_info(ping, State) ->
     User = proplists:get_value(user, State),
-    io:format("User ~p: ping~n", [User]),
+    ?LOG_DEBUG("User ~p: ping", [User]),
     {reply, ping, State};
 websocket_info(Info, State) ->
-    io:format("Info: ~p~n", [Info]),
+    ?LOG_DEBUG("Info: ~p", [Info]),
     {ok, State}.
 
 terminate(Reason, _PartialReq, State) ->
-    io:format("Terminateion reason: ~p~n", [Reason]),
+    ?LOG_DEBUG("Terminateion reason: ~p", [Reason]),
     PingTimer = proplists:get_value(ping_timer, State),
     {ok, cancel} = timer:cancel(PingTimer),
     ok.
