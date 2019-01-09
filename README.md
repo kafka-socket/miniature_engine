@@ -1,9 +1,9 @@
-miniature_engine
-=====
+# Miniature engine
 
-An OTP application
+Description can't be blank
 
-Build
------
+## TODO
 
-    $ rebar3 compile
+- Replace io:format with logger
+- Use config for port, jwt, key, kafka topic, etc
+- Kafka consumer
