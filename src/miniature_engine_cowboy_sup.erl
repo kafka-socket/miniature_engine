@@ -23,16 +23,20 @@ init([]) ->
     ),
     {ok, Pid, state()}.
 
+terminate(_Reason, _State) ->
+    ok.
+
+%% private
 dispatch() ->
     cowboy_router:compile([{'_', [
         {"/ws", miniature_engine_websocket_handler, []}
     ]}]).
 
+%% private
 port() ->
-    3030.
+    {ok, Port} = application:get_env(port),
+    Port.
 
+%% private
 state() ->
     {}.
-
-terminate(_Reason, _State) ->
-    ok.

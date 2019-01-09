@@ -12,14 +12,13 @@
     terminate/3
 ]).
 
--define(JWT_KEY, <<"your-256-bit-secret">>).
-
 init(Req, State) ->
     Qs = cowboy_req:parse_qs(Req),
     Ua = cowboy_req:header(<<"user-agent">>, Req),
     Token = proplists:get_value(<<"token">>, Qs),
     ?LOG_DEBUG("Token is ~p", [Token]),
-    {ok, #{<<"user_uid">> := User}} = jwt:decode(Token, ?JWT_KEY),
+    {ok, Decoded} = jwt:decode(Token, jwt_key()),
+    User = maps:get(user_claim_key(), Decoded),
     {cowboy_websocket, Req, [{user, User}, {ua, Ua}] ++ State}.
 
 websocket_init(State) ->
@@ -62,15 +61,29 @@ websocket_info(Info, State) ->
 
 terminate(Reason, _PartialReq, State) ->
     ?LOG_DEBUG("Terminateion reason: ~p", [Reason]),
-    PingTimer = proplists:get_value(ping_timer, State),
-    {ok, cancel} = timer:cancel(PingTimer),
-    ok.
+    case proplists:get_value(ping_timer, State, no_timer) of
+        no_timer ->
+            ?LOG_ERROR("There is no heartbeat timer: ~p", [State]);
+        PingTimer ->
+            timer:cancel(PingTimer)
+    end.
 
 produce(User, Message) ->
-    brod:produce_sync(
-        _Client    = kafka_client,
-        _Topic     = <<"my-topic">>,
+    brod:produce_sync(kafka_client, topic(),
         _Partition = 0,
         _Key       = User,
         _Value     = Message
     ).
+
+%% This process works within ranch application
+jwt_key() ->
+    {ok, JwtKey} = application:get_env(miniature_engine, jwt_key),
+    JwtKey.
+
+user_claim_key() ->
+    {ok, Key} = application:get_env(miniature_engine, user_claim_key),
+    Key.
+
+topic() ->
+    {ok, Topic} = application:get_env(miniature_engine, kafka_producer_topic),
+    Topic.
