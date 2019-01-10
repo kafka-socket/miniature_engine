@@ -1,4 +1,4 @@
-.PHONY: run docker kafka
+.PHONY: run docker kafka kafkap
 .DEFAULT_GOAL := run
 
 run:
@@ -9,3 +9,6 @@ docker:
 
 kafka:
 	kafka-console-consumer.sh --bootstrap-server localhost:9092 --from-beginning --topic my-topic
+
+kafkap:
+	kafka-console-producer.sh --broker-list localhost:9092 --topic their-topic

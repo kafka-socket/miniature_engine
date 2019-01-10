@@ -3,7 +3,7 @@
 %% @end
 %%%-------------------------------------------------------------------
 
--module(miniature_engine_sup).
+-module(miniature_engine_subscriber_sup).
 
 -export([
     start_link/0
@@ -33,8 +33,7 @@
 }).
 
 -define(CHILDREN, [
-    ?CHILD(miniature_engine_cowboy_sup, supervisor),
-    ?CHILD(miniature_engine_subscriber_sup, supervisor)
+    ?CHILD(miniature_engine_subscriber, worker)
 ]).
 
 start_link() ->

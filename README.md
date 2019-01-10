@@ -6,4 +6,4 @@ Description can't be blank
 
 - ~~Replace io:format with logger~~
 - ~~Use config for port, jwt, key, kafka topic, etc~~
-- Kafka consumer
+- ~~Kafka consumer~~
