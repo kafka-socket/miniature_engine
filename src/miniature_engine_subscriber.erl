@@ -24,9 +24,17 @@ init(Topic, _InitArgs) ->
     {ok, _CommittedOffsets = [], State = #state{} }.
 
 handle_message(_Partition, #kafka_message{key=K, value = V, headers = H} = Message, State) ->
-    ?LOG_DEBUG("Message received ~p", [Message]),
-    ?LOG_DEBUG("Headers~p~nKey:~p~nValue: ~p", [H, V]),
+    ?LOG_DEBUG("Headers: ~p~nKey: ~p~nValue: ~p", [H, K, V]),
+    bcast(K, V),
+    {ok, ack, State};
+handle_message(_Partition, Message, State) ->
+    ?LOG_DEBUG("handle_message(~p)", [Message]),
     {ok, ack, State}.
+
+bcast(<<>>, Message) ->
+    ?LOG_ERROR("Empty user for message ~p", [Message]);
+bcast(User, Message) ->
+    [Pid ! {message, Message} || Pid <- gproc:lookup_pids({p, l, {user, User}})].
 
 topic() ->
     {ok, Topic} = application:get_env(kafka_consumer_topic),

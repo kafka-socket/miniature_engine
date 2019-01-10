@@ -24,6 +24,7 @@ init(Req, State) ->
 websocket_init(State) ->
     User = proplists:get_value(user, State),
     true = gproc:reg({p, l, {user, User}}),
+    produce(User, <<>>, "init"),
     {ok, TRef} = timer:send_interval(5000, self(), ping),
     {ok, [{ping_timer, TRef} | State]}.
 
@@ -36,7 +37,7 @@ websocket_handle(pong, State) ->
 websocket_handle({text, Message}, State) ->
     ?LOG_DEBUG("Text message received ~p", [Message]),
     User = proplists:get_value(user, State),
-    Reply = case produce(User, Message) of
+    Reply = case produce(User, Message, "text") of
         ok ->
             <<"Success">>;
         {error, timeout} ->
@@ -55,12 +56,17 @@ websocket_info(ping, State) ->
     User = proplists:get_value(user, State),
     ?LOG_DEBUG("User ~p: ping", [User]),
     {reply, ping, State};
+websocket_info({message, Message}, State) ->
+    ?LOG_DEBUG("websocket_info({message, ~p}, State)", [Message]),
+    {reply, {text, Message}, State};
 websocket_info(Info, State) ->
     ?LOG_DEBUG("Info: ~p", [Info]),
     {ok, State}.
 
 terminate(Reason, _PartialReq, State) ->
+    User = proplists:get_value(user, State),
     ?LOG_DEBUG("Terminateion reason: ~p", [Reason]),
+    produce(User, <<>>, "terminate"),
     case proplists:get_value(ping_timer, State, no_timer) of
         no_timer ->
             ?LOG_ERROR("There is no heartbeat timer: ~p", [State]);
@@ -68,11 +74,16 @@ terminate(Reason, _PartialReq, State) ->
             timer:cancel(PingTimer)
     end.
 
-produce(User, Message) ->
+produce(User, Message, Type) ->
+    KafkaMessage = #{
+        key => User,
+        value => Message,
+        headers => [{"type", Type}]
+    },
     brod:produce_sync(kafka_client, topic(),
         _Partition = 0,
         _Key       = User,
-        _Value     = Message
+        _Value     = KafkaMessage
     ).
 
 %% This process works within ranch application
