@@ -17,7 +17,7 @@
 -record(state, {}).
 
 start_link() ->
-    brod:start_link_topic_subscriber(kafka_client, topic(), config(), ?MODULE, []).
+    brod:start_link_topic_subscriber(miniature_engine_consumer, topic(), config(), ?MODULE, []).
 
 init(Topic, _InitArgs) ->
     ?LOG_DEBUG("~s:init(~p, [])", [?MODULE, Topic]),

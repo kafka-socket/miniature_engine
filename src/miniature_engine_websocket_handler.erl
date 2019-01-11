@@ -62,8 +62,8 @@ websocket_info(Info, State) ->
     {ok, State}.
 
 terminate(Reason, _PartialReq, State) ->
+    ?LOG_DEBUG("Termination reason: ~p", [Reason]),
     User = proplists:get_value(user, State),
-    ?LOG_DEBUG("Terminateion reason: ~p", [Reason]),
     produce(User, <<>>, "terminate"),
     case proplists:get_value(ping_timer, State, no_timer) of
         no_timer ->
@@ -79,7 +79,7 @@ produce(User, Message, Type) ->
         value => Message,
         headers => [{"type", Type}]
     },
-    brod:produce_sync(kafka_client, topic(),
+    brod:produce_sync(miniature_engine_producer, topic(),
         _Partition = 0,
         _Key       = User,
         _Value     = KafkaMessage
