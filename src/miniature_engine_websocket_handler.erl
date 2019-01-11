@@ -23,7 +23,7 @@ init(Req, State) ->
 
 websocket_init(State) ->
     User = proplists:get_value(user, State),
-    true = gproc:reg({p, l, {user, User}}),
+    miniature_engine_channels:register(User),
     produce(User, <<>>, "init"),
     {ok, TRef} = timer:send_interval(5000, self(), ping),
     {ok, [{ping_timer, TRef} | State]}.
@@ -37,17 +37,15 @@ websocket_handle(pong, State) ->
 websocket_handle({text, Message}, State) ->
     ?LOG_DEBUG("Text message received ~p", [Message]),
     User = proplists:get_value(user, State),
-    Reply = case produce(User, Message, "text") of
+    case produce(User, Message, "text") of
         ok ->
-            <<"Success">>;
+            ?LOG_DEBUG("Message had been sent to kafka");
         {error, timeout} ->
-            <<"Timeout">>;
+            ?LOG_DEBUG("Timeout");
         {error, {producer_down, Reason}} ->
-            ?LOG_DEBUG("Producer down: ~p", [Reason]),
-            <<"Internal Error">>
+            ?LOG_DEBUG("Producer down: ~p", [Reason])
     end,
-    ?LOG_DEBUG("Reply ~s", [Reply]),
-    {reply, {text, Reply}, State};
+    {ok, State};
 websocket_handle(InFrame, State) ->
     ?LOG_DEBUG("In frame: ~p", [InFrame]),
     {ok, State}.
@@ -75,6 +73,7 @@ terminate(Reason, _PartialReq, State) ->
     end.
 
 produce(User, Message, Type) ->
+    ?LOG_DEBUG("produce(~p, ~p, ~p)", [User, Message, Type]),
     KafkaMessage = #{
         key => User,
         value => Message,

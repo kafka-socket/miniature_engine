@@ -34,7 +34,7 @@ handle_message(_Partition, Message, State) ->
 bcast(<<>>, Message) ->
     ?LOG_ERROR("Empty user for message ~p", [Message]);
 bcast(User, Message) ->
-    [Pid ! {message, Message} || Pid <- gproc:lookup_pids({p, l, {user, User}})].
+    [Pid ! {message, Message} || Pid <- miniature_engine_channels:by_key(User)].
 
 topic() ->
     {ok, Topic} = application:get_env(kafka_consumer_topic),
