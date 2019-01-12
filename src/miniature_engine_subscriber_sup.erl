@@ -18,7 +18,7 @@
 -define(SERVER, ?MODULE).
 
 -define(FLAGS, #{
-    strategy  => one_for_all,
+    strategy  => one_for_one,
     intensity => 5,
     period    => 10
 }).
