@@ -5,7 +5,11 @@
   {mod, {miniature_engine_app, []}},
   {applications,
    [kernel,
-    stdlib
+    stdlib,
+    brod,
+    cowboy,
+    gproc,
+    jwt
    ]},
   {env,[]},
   {modules, []},
