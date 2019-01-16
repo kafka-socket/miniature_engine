@@ -37,15 +37,9 @@ websocket_handle(pong, State) ->
 websocket_handle({text, Message}, State) ->
     ?LOG_DEBUG("Text message received ~p", [Message]),
     User = proplists:get_value(user, State),
-    case produce(User, Message, "text") of
-        ok ->
-            ?LOG_DEBUG("Message had been sent to kafka");
-        {error, timeout} ->
-            ?LOG_DEBUG("Timeout");
-        {error, {producer_down, Reason}} ->
-            ?LOG_DEBUG("Producer down: ~p", [Reason])
-    end,
-    {ok, State};
+    KafkaResponse = produce(User, Message, "text"),
+    CbModule = cb_module(),
+    CbModule:on_message_received(Message, KafkaResponse, State);
 websocket_handle(InFrame, State) ->
     ?LOG_DEBUG("In frame: ~p", [InFrame]),
     {ok, State}.
@@ -97,3 +91,6 @@ user_claim_key() ->
 topic() ->
     {ok, Topic} = application:get_env(miniature_engine, kafka_producer_topic),
     Topic.
+
+cb_module() ->
+    application:get_env(miniature_engine, callback_module, miniature_engine_hooks).
