@@ -18,10 +18,10 @@ on_message_received(MessageText, KafkaResponse, State) ->
     end.
 
 send_ack(#{id := Id}, ok, State) ->
-    {ok, {reply, to_json(#{reply_to => Id, sent => true})}, State};
+    {reply, {text, to_json(#{reply_to => Id, sent => true})}, State};
 send_ack(#{id := Id}, {error, Error}, State) ->
     ?LOG_ERROR("Could not send a message due to kafka error ~p", [Error]),
-    {ok, {reply, to_json(#{reply_to => Id, sent => false})}, State};
+    {reply, {text, to_json(#{reply_to => Id, sent => false})}, State};
 send_ack(_DecodedMessage, _KafkaResponse, State) ->
     ?LOG_INFO("Message has inappropriate format"),
     {ok, State}.
