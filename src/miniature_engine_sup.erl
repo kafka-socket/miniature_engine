@@ -15,8 +15,6 @@
     init/1
 ]).
 
--define(SERVER, ?MODULE).
-
 -define(FLAGS, #{
     strategy  => one_for_one,
     intensity => 5,
@@ -33,12 +31,13 @@
 }).
 
 -define(CHILDREN, [
-    ?CHILD(miniature_engine_cowboy_sup, supervisor),
-    ?CHILD(miniature_engine_subscriber_sup, supervisor)
+    ?CHILD(miniature_engine_subscriber, worker)
 ]).
 
+-define(SUPERVISOR, ?MODULE).
+
 start_link() ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+    supervisor:start_link({local, ?SUPERVISOR}, ?MODULE, []).
 
 init([]) ->
     {ok, {?FLAGS, ?CHILDREN}}.

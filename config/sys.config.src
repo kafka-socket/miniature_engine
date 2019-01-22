@@ -1,0 +1,12 @@
+[
+    {miniature_engine, [
+        {port, ${PORT}},
+        {log_level, ${LOG_LEVEL}},
+        {kafka_endpoints, <<"${KAFKA_SERVERS}">>},
+        {jwt_key, <<"${JWT_KEY}">>},
+        {user_claim_key, <<"user_uid">>},
+        {callback_module, miniature_engine_hooks_json_ack},
+        {kafka_producer_topic, <<"${WS_TO_KAFKA_TOPIC}">>},
+        {kafka_consumer_topic, <<"${KAFKA_TO_WS_TOPIC}">>}
+    ]}
+].

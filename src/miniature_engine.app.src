@@ -1,6 +1,6 @@
 {application, miniature_engine,
  [{description, "An OTP application"},
-  {vsn, "0.1.0"},
+  {vsn, "0.0.1"},
   {registered, []},
   {mod, {miniature_engine_app, []}},
   {applications,

@@ -1,0 +1,26 @@
+version: "3.6"
+
+services:
+  app:
+    build: .
+    ports:
+      - "3030:3030"
+    environment:
+      - PORT=3030
+      - LOG_LEVEL=debug
+      - KAFKA_SERVERS=kafka:9092
+      - JWT_KEY=your-256-bit-secret
+      - WS_TO_KAFKA_TOPIC=ws-to-kafka
+      - KAFKA_TO_WS_TOPIC=kafka-to-ws
+
+  zk:
+    image: "wurstmeister/zookeeper"
+
+  kafka:
+    image: "wurstmeister/kafka"
+    ports:
+      - "9092:9092"
+    environment:
+      - KAFKA_CREATE_TOPICS=ws-to-kafka:1:2,ws-to-kafka:1:2
+      - KAFKA_ZOOKEEPER_CONNECT=zk:2181
+      - KAFKA_ADVERTISED_HOST_NAME

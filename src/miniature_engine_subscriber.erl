@@ -21,9 +21,9 @@ start_link() ->
 
 init(Topic, _InitArgs) ->
     ?LOG_DEBUG("~s:init(~p, [])", [?MODULE, Topic]),
-    {ok, _CommittedOffsets = [], State = #state{} }.
+    {ok, _CommittedOffsets = [], _State = #state{} }.
 
-handle_message(_Partition, #kafka_message{key=K, value = V, headers = H} = Message, State) ->
+handle_message(_Partition, #kafka_message{key=K, value = V, headers = H}, State) ->
     ?LOG_DEBUG("Headers: ~p~nKey: ~p~nValue: ~p", [H, K, V]),
     bcast(K, V),
     {ok, ack, State};
