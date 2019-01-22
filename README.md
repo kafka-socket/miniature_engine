@@ -9,4 +9,4 @@ Description can't be blank
 - ~~Kafka consumer~~
 - ~~Split kafka consumer and producers into two clients~~
 - ~~Extract gproc related functions to separate module~~
-- Wait for kafka if it is unavailable
+- ~~Wait for kafka if it is unavailable~~

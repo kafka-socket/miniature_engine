@@ -9,6 +9,7 @@
 start() ->
     ok = logger:set_primary_config(level, log_level()),
     {ok, _Pid} = start_cowboy(),
+    ok = wait_for_kafka(),
     ok = start_kafka_client(miniature_engine_producer),
     ok = start_kafka_client(miniature_engine_consumer).
 
@@ -44,3 +45,21 @@ dispatch() ->
 
 log_level() ->
     application:get_env(miniature_engine, log_level, notice).
+
+wait_for_kafka() ->
+    Result = try
+        brod:get_metadata(endpoints())
+    catch
+        throw:Throw ->
+            {error, Throw};
+        error:Error ->
+            {error, Error}
+    end,
+    wait_for_kafka(Result).
+
+wait_for_kafka({ok, _Metadata}) ->
+    ok;
+wait_for_kafka({error, Error}) ->
+    ?LOG_ERROR("Kafka unavailable. Bootstrap endpoints are ~p due to ~p", [endpoints(), Error]),
+    timer:sleep(timer:seconds(2)),
+    wait_for_kafka().

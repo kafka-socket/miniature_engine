@@ -17,6 +17,7 @@
 -record(state, {}).
 
 start_link() ->
+    ok = wait_for_topic(),
     brod:start_link_topic_subscriber(miniature_engine_consumer, topic(), config(), ?MODULE, []).
 
 init(Topic, _InitArgs) ->
@@ -35,6 +36,20 @@ bcast(<<>>, Message) ->
     ?LOG_ERROR("Empty user for message ~p", [Message]);
 bcast(User, Message) ->
     [Pid ! {message, Message} || Pid <- miniature_engine_channels:by_key(User)].
+
+wait_for_topic() ->
+    wait_for_topic(brod_client:get_metadata(miniature_engine_consumer, topic())).
+
+wait_for_topic({ok, #{topic_metadata := [#{error_code := no_error}]}}) ->
+    ok;
+wait_for_topic({ok, #{topic_metadata := [#{error_code := Error}]}}) ->
+    ?LOG_ERROR("Topic ~s error: ~p", [topic(), Error]),
+    timer:sleep(timer:seconds(2)),
+    wait_for_topic();
+wait_for_topic({error, Error}) ->
+    ?LOG_ERROR("Topic ~s unavailable: ~p", [topic(), Error]),
+    timer:sleep(timer:seconds(2)),
+    wait_for_topic().
 
 topic() ->
     {ok, Topic} = application:get_env(kafka_consumer_topic),
