@@ -21,6 +21,6 @@ services:
     ports:
       - "9092:9092"
     environment:
-      - KAFKA_CREATE_TOPICS=ws-to-kafka:1:2,ws-to-kafka:1:2
+      - KAFKA_CREATE_TOPICS=ws-to-kafka:1:2,kafka-to-ws:1:2
       - KAFKA_ZOOKEEPER_CONNECT=zk:2181
       - KAFKA_ADVERTISED_HOST_NAME
