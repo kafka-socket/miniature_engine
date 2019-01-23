@@ -1,12 +1,25 @@
 # Miniature engine
 
-Description can't be blank
+Kafka to websocket transparent bidirectional bridge
 
-## TODO
+## Run
 
-- ~~Replace io:format with logger~~
-- ~~Use config for port, jwt, key, kafka topic, etc~~
-- ~~Kafka consumer~~
-- ~~Split kafka consumer and producers into two clients~~
-- ~~Extract gproc related functions to separate module~~
-- ~~Wait for kafka if it is unavailable~~
+```bash
+export KAFKA_ADVERTISED_HOST_NAME=`ipconfig getifaddr en0`
+docker-compse up -d
+```
+
+## Development
+
+### Prerequisite
+
+- Erlang 21
+- rebar3
+
+### Start external deps
+
+`docker-compose up -d zk kafka`
+
+### Run erlang console
+
+`rebar3 shell`
