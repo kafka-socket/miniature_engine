@@ -40,7 +40,8 @@ port() ->
 
 dispatch() ->
     cowboy_router:compile([{'_', [
-        {"/ws", miniature_engine_websocket_handler, []}
+        {"/ws", miniature_engine_websocket_handler, []},
+        {"/health", miniature_engine_healthcheck_handler, []}
     ]}]).
 
 log_level() ->
