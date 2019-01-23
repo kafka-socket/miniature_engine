@@ -10,8 +10,8 @@ services:
       - LOG_LEVEL=debug
       - KAFKA_SERVERS=kafka:9092
       - JWT_KEY=your-256-bit-secret
-      - WS_TO_KAFKA_TOPIC=ws-to-kafka
-      - KAFKA_TO_WS_TOPIC=kafka-to-ws
+      - PRODUCER_TOPIC=ws-to-kafka
+      - CONSUMER_TOPIC=kafka-to-ws
 
   zk:
     image: "wurstmeister/zookeeper"
