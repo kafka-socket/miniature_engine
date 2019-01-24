@@ -12,14 +12,19 @@
     terminate/3
 ]).
 
-init(Req, State) ->
-    Qs = cowboy_req:parse_qs(Req),
-    Ua = cowboy_req:header(<<"user-agent">>, Req),
-    Token = proplists:get_value(<<"token">>, Qs),
+init(Request, State) ->
+    Qs = cowboy_req:parse_qs(Request),
+    Ua = cowboy_req:header(<<"user-agent">>, Request),
+    Token = proplists:get_value(<<"token">>, Qs, <<>>),
     ?LOG_DEBUG("Token is ~p", [Token]),
-    {ok, Decoded} = jwt:decode(Token, jwt_key()),
-    User = maps:get(user_claim_key(), Decoded),
-    {cowboy_websocket, Req, [{user, User}, {ua, Ua}] ++ State}.
+    case miniature_engine_jwt:decode(Token, jwt_key()) of
+        {ok, Decoded} ->
+            User = maps:get(user_claim_key(), Decoded),
+            {cowboy_websocket, Request, [{user, User}, {ua, Ua}] ++ State};
+        {error, Error} ->
+            ?LOG_ERROR("Bad token ~s: ~p", [Token, Error]),
+            {ok, cowboy_req:reply(401, Request), State}
+    end.
 
 websocket_init(State) ->
     User = proplists:get_value(user, State),
@@ -68,6 +73,9 @@ terminate(Reason, _PartialReq, State) ->
             timer:cancel(PingTimer)
     end.
 
+produce(undefined, _, _) ->
+    ?LOG_ERROR("Undefined user"),
+    {error, undefined_user};
 produce(User, Message, Type) ->
     ?LOG_DEBUG("produce(~p, ~p, ~p)", [User, Message, Type]),
     KafkaMessage = #{

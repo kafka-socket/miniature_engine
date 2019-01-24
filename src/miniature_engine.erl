@@ -9,10 +9,11 @@
 
 start() ->
     ok = logger:set_primary_config(level, log_level()),
-    {ok, _Pid} = start_cowboy(),
     ok = wait_for_kafka(),
     ok = start_kafka_client(miniature_engine_producer),
-    ok = start_kafka_client(miniature_engine_consumer).
+    ok = start_kafka_client(miniature_engine_consumer),
+    {ok, _Pid} = start_cowboy(),
+    ok.
 
 stop_gracefully() ->
     ok = ranch:suspend_listener(http),
@@ -60,9 +61,9 @@ wait_for_kafka() ->
     Result = try
         brod:get_metadata(endpoints())
     catch
-        throw:Throw ->
+        throw : Throw ->
             {error, Throw};
-        error:Error ->
+        error : Error ->
             {error, Error}
     end,
     wait_for_kafka(Result).
