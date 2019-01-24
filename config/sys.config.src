@@ -1,4 +1,15 @@
 [
+    {kernel, [
+        {logger, [
+            {handler, default, logger_std_h, #{
+                formatter => {logger_formatter, #{
+                    template => [time, " ", pid, " ", msg, "\n"],
+                    single_line => true
+                }}
+            }}
+        ]}
+    ]},
+
     {miniature_engine, [
         {port, ${PORT}},
         {log_level, ${LOG_LEVEL}},
