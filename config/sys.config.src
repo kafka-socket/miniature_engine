@@ -3,7 +3,7 @@
         {logger, [
             {handler, default, logger_std_h, #{
                 formatter => {logger_formatter, #{
-                    template => [time, " ", pid, " ", msg, "\n"],
+                    template => [pid, " ", msg, "\n"],
                     single_line => true
                 }}
             }}
