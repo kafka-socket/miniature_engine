@@ -27,7 +27,7 @@ start_kafka_client(ClientId) ->
 
 start_cowboy() ->
     cowboy:start_clear(http,
-        _TransportOpts = [{port, port()}],
+        _TransportOpts = [{port, port()}, {ipv6_v6only, false}, inet6],
         _ProtocolOpts  = #{env => #{dispatch => dispatch()}}
     ).
 
