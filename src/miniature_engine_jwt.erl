@@ -5,6 +5,7 @@
 ]).
 
 -include_lib("kernel/include/logger.hrl").
+-include_lib("public_key/include/public_key.hrl").
 
 decode(Token, Key) ->
     ?LOG_DEBUG("decode(~p, ~p)", [Token, Key]),
@@ -48,13 +49,9 @@ jwt_check_sig(Alg, Header, Claims, Signature, Key) ->
     jwt_check_sig(algorithm_to_crypto(Alg), <<Header/binary, ".", Claims/binary>>, Signature, Key).
 
 jwt_check_sig({hmac, _} = Alg, Payload, Signature, Key) ->
-    ?LOG_DEBUG("jwt_check_sig(~p, ~p, ~p, ~p)", [Alg, Payload, Signature, Key]),
     jwt_sign_with_crypto(Alg, Payload, Key) =:= Signature;
-jwt_check_sig({rsa, Crypto}, Payload, Signature, Key) ->
-    public_key:verify(Payload, Crypto, base64url:decode(Signature), Key);
 jwt_check_sig({ecdsa, Crypto}, Payload, Signature, Key) ->
-    ?LOG_DEBUG("jwt_check_sig({ecdsa, ~p}, ~p, ~p, ~p)", [Crypto, Payload, Signature, Key]),
-    public_key:verify(Payload, Crypto, base64url:decode(Signature), Key);
+    public_key:verify(Payload, Crypto, base64url:decode(Signature), decode_pem(Key));
 jwt_check_sig(_, _, _, _) ->
     false.
 
@@ -83,8 +80,11 @@ jwt_sign_with_crypto(_, _Payload, _Key) ->
 algorithm_to_crypto(<<"HS256">>) -> {hmac,  sha256};
 algorithm_to_crypto(<<"HS384">>) -> {hmac,  sha384};
 algorithm_to_crypto(<<"HS512">>) -> {hmac,  sha512};
-algorithm_to_crypto(<<"RS256">>) -> {rsa,   sha256};
 algorithm_to_crypto(<<"ES256">>) -> {ecdsa, sha256};
 algorithm_to_crypto(_)           -> undefined.
 
 epoch() -> erlang:system_time(seconds).
+
+decode_pem(Key) ->
+    [Encoded] = public_key:pem_decode(Key),
+    public_key:pem_entry_decode(Encoded).
