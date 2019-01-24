@@ -3,7 +3,8 @@
 -include_lib("kernel/include/logger.hrl").
 
 -export([
-    start/0
+    start/0,
+    stop_gracefully/0
 ]).
 
 start() ->
@@ -12,6 +13,14 @@ start() ->
     ok = wait_for_kafka(),
     ok = start_kafka_client(miniature_engine_producer),
     ok = start_kafka_client(miniature_engine_consumer).
+
+stop_gracefully() ->
+    ok = ranch:suspend_listener(http),
+    ok = lists:foreach(fun(Pid) ->
+        Pid ! stop_gracefully
+    end, miniature_engine_channels:all()),
+    ok = ranch:wait_for_connections(http, '==', 0).
+
 
 start_kafka_client(ClientId) ->
     brod:start_client(endpoints(), ClientId, [{auto_start_producers, true}]).

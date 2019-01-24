@@ -44,6 +44,8 @@ websocket_handle(InFrame, State) ->
     ?LOG_DEBUG("In frame: ~p", [InFrame]),
     {ok, State}.
 
+websocket_info(stop_gracefully, State) ->
+    {stop, State};
 websocket_info(ping, State) ->
     User = proplists:get_value(user, State),
     ?LOG_DEBUG("User ~p: ping", [User]),
