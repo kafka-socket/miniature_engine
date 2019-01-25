@@ -24,7 +24,10 @@ stop_gracefully() ->
 
 
 start_kafka_client(ClientId) ->
-    brod:start_client(endpoints(), ClientId, [{auto_start_producers, true}]).
+    brod:start_client(endpoints(), ClientId, [
+        {auto_start_producers, true},
+        {extra_sock_opts, [inet6]}
+    ]).
 
 start_cowboy() ->
     cowboy:start_clear(http,
