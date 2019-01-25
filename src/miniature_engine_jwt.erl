@@ -51,7 +51,7 @@ jwt_check_sig(Alg, Header, Claims, Signature, Key) ->
 jwt_check_sig({hmac, _} = Alg, Payload, Signature, Key) ->
     jwt_sign_with_crypto(Alg, Payload, Key) =:= Signature;
 jwt_check_sig({ecdsa, Crypto}, Payload, Signature, Key) ->
-    public_key:verify(Payload, Crypto, base64url:decode(Signature), decode_pem(Key));
+    public_key:verify(Payload, Crypto, ecdsa_signature(Signature), decode_pem(Key));
 jwt_check_sig(_, _, _, _) ->
     false.
 
@@ -88,3 +88,11 @@ epoch() -> erlang:system_time(seconds).
 decode_pem(Key) ->
     [Encoded] = public_key:pem_decode(Key),
     public_key:pem_entry_decode(Encoded).
+
+ecdsa_signature(Base64Sig) ->
+    Signature = base64url:decode(Base64Sig),
+    SignatureLen = byte_size(Signature),
+    {RBin, SBin} = split_binary(Signature, (SignatureLen div 2)),
+    R = crypto:bytes_to_integer(RBin),
+    S = crypto:bytes_to_integer(SBin),
+    public_key:der_encode('ECDSA-Sig-Value', #'ECDSA-Sig-Value'{ r = R, s = S }).
