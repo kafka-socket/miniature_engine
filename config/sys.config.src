@@ -7,7 +7,9 @@
                     single_line => true
                 }}
             }}
-        ]}
+        ]},
+        {inet_dist_listen_min, ${ERL_DISTR_PORT}},
+        {inet_dist_listen_max, ${ERL_DISTR_PORT}}
     ]},
 
     {miniature_engine, [

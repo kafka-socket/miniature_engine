@@ -12,7 +12,7 @@ services:
       - JWT_KEY=your-256-bit-secret
       - PRODUCER_TOPIC=ws-to-kafka
       - CONSUMER_TOPIC=kafka-to-ws
-
+      - ERL_DISTR_PORT=22490
   zk:
     image: "wurstmeister/zookeeper"
 
