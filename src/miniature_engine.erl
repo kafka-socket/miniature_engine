@@ -26,12 +26,12 @@ stop_gracefully() ->
 start_kafka_client(ClientId) ->
     brod:start_client(endpoints(), ClientId, [
         {auto_start_producers, true},
-        {extra_sock_opts, [inet6]}
+        {extra_sock_opts, kafka_socket_options()}
     ]).
 
 start_cowboy() ->
     cowboy:start_clear(http,
-        _TransportOpts = [{port, port()}, {ipv6_v6only, false}, inet6],
+        _TransportOpts = http_socket_options(),
         _ProtocolOpts  = #{env => #{dispatch => dispatch()}}
     ).
 
@@ -62,7 +62,7 @@ log_level() ->
 
 wait_for_kafka() ->
     Result = try
-        brod:get_metadata(endpoints())
+        brod:get_metadata(endpoints(), all, #{extra_sock_opts => kafka_socket_options()})
     catch
         throw : Throw ->
             {error, Throw};
@@ -77,3 +77,22 @@ wait_for_kafka({error, Error}) ->
     ?LOG_ERROR("Kafka unavailable. Bootstrap endpoints are ~p due to ~p", [endpoints(), Error]),
     timer:sleep(timer:seconds(2)),
     wait_for_kafka().
+
+kafka_socket_options() ->
+    kafka_socket_options(is_ipv6_enabled()).
+
+kafka_socket_options(false) ->
+    [];
+kafka_socket_options(_) ->
+    [inet6].
+
+http_socket_options() ->
+    http_socket_options(is_ipv6_enabled()).
+
+http_socket_options(false) ->
+    [{port, port()}];
+http_socket_options(_) ->
+    [{port, port()}, inet6].
+
+is_ipv6_enabled() ->
+    application:get_env(miniature_engine, ipv6, false).

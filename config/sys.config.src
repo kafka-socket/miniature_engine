@@ -15,6 +15,7 @@
     {miniature_engine, [
         {port, ${PORT}},
         {log_level, ${LOG_LEVEL}},
+        {ipv6, true},
         {kafka_endpoints, <<"${KAFKA_SERVERS}">>},
         {jwt_key, <<"${JWT_KEY}">>},
         {user_claim_key, <<"user_uid">>},
