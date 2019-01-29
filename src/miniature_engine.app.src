@@ -9,6 +9,7 @@
     brod,
     cowboy,
     gproc,
+    jwt,
     jsx
    ]},
   {env,[]},

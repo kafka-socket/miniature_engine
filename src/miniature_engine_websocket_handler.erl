@@ -17,7 +17,7 @@ init(Request, State) ->
     Ua = cowboy_req:header(<<"user-agent">>, Request),
     Token = proplists:get_value(<<"token">>, Qs, <<>>),
     ?LOG_DEBUG("Token is ~p", [Token]),
-    case miniature_engine_jwt:decode(Token, jwt_key()) of
+    case jwt:decode(Token, jwt_key()) of
         {ok, Decoded} ->
             User = maps:get(user_claim_key(), Decoded),
             {cowboy_websocket, Request, [{user, User}, {ua, Ua}] ++ State};
