@@ -12,17 +12,16 @@
     terminate/3
 ]).
 
-init(Request, State) ->
-    Qs = cowboy_req:parse_qs(Request),
-    Ua = cowboy_req:header(<<"user-agent">>, Request),
-    Token = proplists:get_value(<<"token">>, Qs, <<>>),
-    ?LOG_DEBUG("Token is ~p", [Token]),
+init(Request, InitialState) ->
+    State = maps:merge(maps:from_list(InitialState), #{request => Request}),
+    Token = token(Request),
+    ?LOG_DEBUG("Token is ~s", [Token]),
     case jwt:decode(Token, jwt_key()) of
         {ok, Decoded} ->
             User = maps:get(user_claim_key(), Decoded),
-            {cowboy_websocket, Request, [{user, User}, {ua, Ua}] ++ State};
+            {cowboy_websocket, Request, maps:merge(State, #{user => User})};
         {error, Error} ->
-            ?LOG_ERROR("Bad token ~s: ~p", [Token, Error]),
+            ?LOG_ERROR("Bad token ~p", [Error]),
             {ok, cowboy_req:reply(401, Request), State}
     end.
 
@@ -30,8 +29,8 @@ websocket_init(State) ->
     User = proplists:get_value(user, State),
     miniature_engine_channels:register(User),
     produce(User, <<>>, "init"),
-    {ok, TRef} = timer:send_interval(5000, self(), ping),
-    {ok, [{ping_timer, TRef} | State]}.
+    {ok, TRef} = heartbeat(),
+    {ok, maps:merge(State, #{heartbeat_timer => TRef})}.
 
 websocket_handle(ping, State) ->
     ?LOG_DEBUG("ping received"),
@@ -66,11 +65,11 @@ terminate(Reason, _PartialReq, State) ->
     ?LOG_DEBUG("Termination reason: ~p", [Reason]),
     User = proplists:get_value(user, State),
     produce(User, <<>>, "terminate"),
-    case proplists:get_value(ping_timer, State, no_timer) of
+    case maps:get(heartbeat_timer, State, no_timer) of
         no_timer ->
             ?LOG_ERROR("There is no heartbeat timer: ~p", [State]);
-        PingTimer ->
-            timer:cancel(PingTimer)
+        Timer ->
+            timer:cancel(Timer)
     end.
 
 produce(undefined, _, _) ->
@@ -88,6 +87,29 @@ produce(User, Message, Type) ->
         _Key       = User,
         _Value     = KafkaMessage
     ).
+
+token(Request) ->
+    Qs = cowboy_req:parse_qs(Request),
+    case proplists:get_value(<<"token">>, Qs, no_token) of
+        no_token ->
+            token_from_header(Request);
+        Token ->
+            Token
+    end.
+
+token_from_header(Request) ->
+    case cowboy_req:header(<<"authorization">>, Request) of
+        <<"Bearer ", Token/binary>> ->
+            Token;
+        _ ->
+            <<>>
+    end.
+
+heartbeat() ->
+    timer:send_interval(heartbeat_interval(), self(), ping).
+
+heartbeat_interval() ->
+    application:get_env(miniature_engine, heartbeat_interval, 5000).
 
 %% This process works within ranch application
 jwt_key() ->
