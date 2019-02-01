@@ -22,7 +22,9 @@ all() ->
 init_per_suite(Config) ->
     {ok, _} = application:ensure_all_started(miniature_engine),
     {ok, _} = application:ensure_all_started(gun),
-    ok = brod:start_client([{"localhost", 9092}], test_client, [{auto_start_producers, true}]),
+    ok = brod:start_client([{"localhost", 9092}], test_client, [
+        {auto_start_producers, true}
+    ]),
     Config.
 
 end_per_suite(_Config) ->
@@ -30,29 +32,29 @@ end_per_suite(_Config) ->
 
 full_cycle(Config) ->
     DataDir = ?config(data_dir, Config),
+    {ok, Token} = token(DataDir),
+    {ok, ConnPid, StreamRef} = start_websockets(Token),
+    {ok, SubscriberPid} = start_subscriber(),
+    {ok, #kafka_message{key = ?USER_UUID, headers = Headers1}} = wait_kafka_message(),
+    ?assertEqual(<<"init">>, proplists:get_value(<<"type">>, Headers1)),
+    send_ws_message(ConnPid, "Hello!"),
+    {ok, #kafka_message{key = ?USER_UUID, value = <<"Hello!">>}} = wait_kafka_message(),
+    ok = send_kafka_message(<<"wazzup">>),
+    {text, Message} = wait_ws_message(ConnPid, StreamRef),
+    ?assertEqual(<<"wazzup">>, Message),
+    ok = close_websockets(ConnPid),
+    {ok, #kafka_message{key = ?USER_UUID, headers = Headers2}} = wait_kafka_message(),
+    ?assertEqual(<<"terminate">>, proplists:get_value(<<"type">>, Headers2)),
+    ok = brod_topic_subscriber:stop(SubscriberPid).
+
+start_websockets(Token) ->
     {ok, ConnPid} = gun:open("localhost", 3030),
     {ok, http} = gun:await_up(ConnPid),
-    {ok, Token} = token(DataDir),
     StreamRef = gun:ws_upgrade(ConnPid, "/ws", [
         {<<"authorization">>, <<"Bearer ", Token/binary>>}
     ]),
     ok = wait_upgrade(ConnPid, StreamRef),
-    {ok, SubscriberPid} = start_subscriber(),
-    {ok, #kafka_message{key = ?USER_UUID, headers = Headers1}} = wait_kafka_message(),
-    ?assertEqual(<<"init">>, proplists:get_value(<<"type">>, Headers1)),
-    gun:ws_send(ConnPid, {text, "Hello!"}),
-    {ok, #kafka_message{key = ?USER_UUID, value = <<"Hello!">>}} = wait_kafka_message(),
-    ok = brod:produce_sync(test_client, <<"kafka-to-ws">>,
-        _Partition = 0,
-        _Key       = ?USER_UUID,
-        _Value     = <<"wazzup">>
-    ),
-    {text, Message} = wait_ws_message(ConnPid, StreamRef),
-    ?assertEqual(<<"wazzup">>, Message),
-    ok = gun:close(ConnPid),
-    {ok, #kafka_message{key = ?USER_UUID, headers = Headers2}} = wait_kafka_message(),
-    ?assertEqual(<<"terminate">>, proplists:get_value(<<"type">>, Headers2)),
-    ok = brod_topic_subscriber:stop(SubscriberPid).
+    {ok, ConnPid, StreamRef}.
 
 wait_upgrade(ConnPid, StreamRef) ->
     receive
@@ -64,6 +66,9 @@ wait_upgrade(ConnPid, StreamRef) ->
     after 1000 ->
         timeout
     end.
+
+close_websockets(ConnPid) ->
+    gun:close(ConnPid).
 
 start_subscriber() ->
     brod_topic_subscriber:start_link(test_client, <<"ws-to-kafka">>,
@@ -93,6 +98,19 @@ wait_ws_message(ConnPid, StreamRef) ->
     after 1000 ->
         timeout
     end.
+
+send_kafka_message(Message) ->
+    send_kafka_message(Message, ?USER_UUID).
+
+send_kafka_message(Message, User) ->
+    brod:produce_sync(test_client, <<"kafka-to-ws">>,
+        _Partition = 0,
+        _Key       = User,
+        _Value     = Message
+    ).
+
+send_ws_message(ConnPid, Message) ->
+    gun:ws_send(ConnPid, {text, Message}).
 
 token(Dir) ->
     {ok, Pem} = file:read_file(filename:join(Dir, "ecdsa_private.pem")),
