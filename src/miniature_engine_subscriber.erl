@@ -29,7 +29,7 @@ init(Topic, _InitArgs) ->
     ?LOG_DEBUG("~s:init(~p, [])", [?MODULE, Topic]),
     {ok, _CommittedOffsets = [], _State = #state{}}.
 
--spec handle_message(non_neg_integer(), #kafka_message{}, state()) -> {ok, ack, state()}.
+-spec handle_message(non_neg_integer(), brod:message(), state()) -> {ok, ack, state()}.
 handle_message(Partition, #kafka_message{key=K, value = V, headers = H}, State) ->
     ?LOG_DEBUG("handle_message(~p, ~p)", [H, V]),
     bcast(K, V),
