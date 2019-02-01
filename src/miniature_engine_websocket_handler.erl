@@ -12,6 +12,9 @@
     terminate/3
 ]).
 
+-type state() :: map().
+
+-spec init(cowboy_req:req(), list()) -> {atom(), cowboy_req:req(), state()}.
 init(Request, InitialState) ->
     State = maps:merge(maps:from_list(InitialState), #{request => Request}),
     Token = token(Request),
@@ -25,8 +28,8 @@ init(Request, InitialState) ->
             {ok, cowboy_req:reply(401, Request), State}
     end.
 
-websocket_init(State) ->
-    User = proplists:get_value(user, State),
+-spec websocket_init(state()) -> {ok, state()}.
+websocket_init(#{user := User, request := Request} = State) ->
     miniature_engine_channels:register(User),
     produce(User, <<>>, "init"),
     {ok, TRef} = heartbeat(),
@@ -108,9 +111,6 @@ token_from_header(Request) ->
 heartbeat() ->
     timer:send_interval(heartbeat_interval(), self(), ping).
 
-heartbeat_interval() ->
-    application:get_env(miniature_engine, heartbeat_interval, 5000).
-
 %% This process works within ranch application
 jwt_key() ->
     {ok, JwtKey} = application:get_env(miniature_engine, jwt_key),
@@ -126,3 +126,7 @@ topic() ->
 
 cb_module() ->
     application:get_env(miniature_engine, callback_module, miniature_engine_hooks).
+
+heartbeat_interval() ->
+    application:get_env(miniature_engine, heartbeat_interval, 5000).
+

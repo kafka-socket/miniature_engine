@@ -36,8 +36,10 @@
 
 -define(SUPERVISOR, ?MODULE).
 
+-spec start_link() -> {ok, pid()}.
 start_link() ->
     supervisor:start_link({local, ?SUPERVISOR}, ?MODULE, []).
 
+-spec init(any()) -> {ok, {supervisor:sup_flags(), [supervisor:child_spec()]}}.
 init([]) ->
     {ok, {?FLAGS, ?CHILDREN}}.

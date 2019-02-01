@@ -16,16 +16,22 @@
 
 -record(state, {}).
 
+-type state() :: #state{}.
+-type committed_offsets() :: [{brod:partition(), brod:offset()}].
+
+-spec start_link() -> {ok, pid()}.
 start_link() ->
     ok = wait_for_topic(),
     brod:start_link_topic_subscriber(miniature_engine_consumer, topic(), config(), ?MODULE, []).
 
+-spec init(binary(), any()) -> {ok, committed_offsets(), state()}.
 init(Topic, _InitArgs) ->
     ?LOG_DEBUG("~s:init(~p, [])", [?MODULE, Topic]),
-    {ok, _CommittedOffsets = [], _State = #state{} }.
+    {ok, _CommittedOffsets = [], _State = #state{}}.
 
-handle_message(_Partition, #kafka_message{key=K, value = V, headers = H}, State) ->
-    ?LOG_DEBUG("Headers: ~p~nKey: ~p~nValue: ~p", [H, K, V]),
+-spec handle_message(non_neg_integer(), #kafka_message{}, state()) -> {ok, ack, state()}.
+handle_message(Partition, #kafka_message{key=K, value = V, headers = H}, State) ->
+    ?LOG_DEBUG("handle_message(~p, ~p)", [H, V]),
     bcast(K, V),
     {ok, ack, State};
 handle_message(_Partition, Message, State) ->
