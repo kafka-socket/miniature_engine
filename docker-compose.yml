@@ -18,8 +18,11 @@ services:
 
   kafka:
     image: "wurstmeister/kafka"
+    ports:
+      - "9092:9092"
     depends_on:
       - zk
     environment:
-      KAFKA_ZOOKEEPER_CONNECT: zk:2181
-      KAFKA_ADVERTISED_HOST_NAME: kafka
+      - KAFKA_ZOOKEEPER_CONNECT=zk:2181
+      - KAFKA_ADVERTISED_HOST_NAME=localhost
+      - "KAFKA_CREATE_TOPICS=ws-to-kafka:1:1,kafka-to-ws:1:1"

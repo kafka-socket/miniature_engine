@@ -29,7 +29,7 @@ init(Request, InitialState) ->
     end.
 
 -spec websocket_init(state()) -> {ok, state()}.
-websocket_init(#{user := User, request := Request} = State) ->
+websocket_init(#{user := User} = State) ->
     miniature_engine_channels:register(User),
     produce(User, <<>>, "init"),
     {ok, TRef} = heartbeat(),
@@ -43,7 +43,7 @@ websocket_handle(pong, State) ->
     {ok, State};
 websocket_handle({text, Message}, State) ->
     ?LOG_DEBUG("Text message received ~p", [Message]),
-    User = proplists:get_value(user, State),
+    User = maps:get(user, State),
     KafkaResponse = produce(User, Message, "text"),
     CbModule = cb_module(),
     CbModule:on_message_received(Message, KafkaResponse, State);
@@ -54,7 +54,7 @@ websocket_handle(InFrame, State) ->
 websocket_info(stop_gracefully, State) ->
     {stop, State};
 websocket_info(ping, State) ->
-    User = proplists:get_value(user, State),
+    User = maps:get(user, State),
     ?LOG_DEBUG("User ~p: ping", [User]),
     {reply, ping, State};
 websocket_info({message, Message}, State) ->
@@ -64,16 +64,18 @@ websocket_info(Info, State) ->
     ?LOG_DEBUG("Info: ~p", [Info]),
     {ok, State}.
 
-terminate(Reason, _PartialReq, State) ->
+terminate(Reason, _PartialReq, State) when is_map(State) ->
     ?LOG_DEBUG("Termination reason: ~p", [Reason]),
-    User = proplists:get_value(user, State),
+    User = maps:get(user, State),
     produce(User, <<>>, "terminate"),
     case maps:get(heartbeat_timer, State, no_timer) of
         no_timer ->
             ?LOG_ERROR("There is no heartbeat timer: ~p", [State]);
         Timer ->
             timer:cancel(Timer)
-    end.
+    end;
+terminate(Reason, _PartialReq, _State) ->
+    ?LOG_DEBUG("Termination reason: ~p", [Reason]).
 
 produce(undefined, _, _) ->
     ?LOG_ERROR("Undefined user"),

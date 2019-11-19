@@ -30,7 +30,7 @@ init(Topic, _InitArgs) ->
     {ok, _CommittedOffsets = [], _State = #state{}}.
 
 -spec handle_message(non_neg_integer(), brod:message(), state()) -> {ok, ack, state()}.
-handle_message(Partition, #kafka_message{key=K, value = V, headers = H}, State) ->
+handle_message(_Partition, #kafka_message{key=K, value = V, headers = H}, State) ->
     ?LOG_DEBUG("handle_message(~p, ~p)", [H, V]),
     bcast(K, V),
     {ok, ack, State};
