@@ -7,7 +7,8 @@
 -export([
     all/0,
     init_per_suite/1,
-    end_per_suite/1
+    end_per_suite/1,
+    connections_exceed_limit/1
 ]).
 
 -export([
@@ -17,7 +18,7 @@
 -define(USER_UUID, <<"qqq123">>).
 
 all() ->
-    [full_cycle].
+    [full_cycle, connections_exceed_limit].
 
 init_per_suite(Config) ->
     {ok, _} = application:ensure_all_started(miniature_engine),
@@ -25,14 +26,15 @@ init_per_suite(Config) ->
     ok = brod:start_client([{"localhost", 9092}], test_client, [
         {auto_start_producers, true}
     ]),
-    Config.
+    DataDir = ?config(data_dir, Config),
+    {ok, Token} = token(DataDir),
+    [{token, Token} | Config].
 
 end_per_suite(_Config) ->
     ok.
 
 full_cycle(Config) ->
-    DataDir = ?config(data_dir, Config),
-    {ok, Token} = token(DataDir),
+    Token = ?config(token, Config),
     {ok, ConnPid, StreamRef} = start_websockets(Token),
     {ok, SubscriberPid} = start_subscriber(),
     {ok, #kafka_message{key = ?USER_UUID, headers = Headers1}} = wait_kafka_message(),
@@ -47,22 +49,32 @@ full_cycle(Config) ->
     ?assertEqual(<<"terminate">>, proplists:get_value(<<"type">>, Headers2)),
     ok = brod_topic_subscriber:stop(SubscriberPid).
 
+connections_exceed_limit(Config) ->
+    Token = ?config(token, Config),
+    {ok, ConnPid1, _} = start_websockets(Token),
+
+    {error, _, Error} = start_websockets(Token),
+    ?assertEqual(429, Error),
+
+    ok = close_websockets(ConnPid1).
+
 start_websockets(Token) ->
     {ok, ConnPid} = gun:open("localhost", 3030),
     {ok, http} = gun:await_up(ConnPid),
     StreamRef = gun:ws_upgrade(ConnPid, "/ws", [
         {<<"authorization">>, <<"Bearer ", Token/binary>>}
     ]),
-    ok = wait_upgrade(ConnPid, StreamRef),
-    {ok, ConnPid, StreamRef}.
+    case wait_upgrade(ConnPid, StreamRef) of
+        {ok} -> {ok, ConnPid, StreamRef};
+        {error, {_, _, _, _, ErrorCode, _}} -> {error, ConnPid, ErrorCode}
+    end.
 
 wait_upgrade(ConnPid, StreamRef) ->
     receive
         {gun_upgrade, ConnPid, StreamRef, [<<"websocket">>], _Headers} ->
-            ok;
+            {ok};
         Unexpected ->
-            ?debugVal(Unexpected),
-            unexpected
+            {error, Unexpected}
     after 1000 ->
         timeout
     end.

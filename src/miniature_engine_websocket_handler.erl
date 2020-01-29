@@ -18,14 +18,16 @@
 init(Request, InitialState) ->
     State = maps:merge(maps:from_list(InitialState), #{request => Request}),
     Token = token(Request),
-    ?LOG_DEBUG("Token is ~s", [Token]),
-    case jwt:decode(Token, jwt_key()) of
-        {ok, Decoded} ->
-            User = maps:get(user_claim_key(), Decoded),
-            {cowboy_websocket, Request, maps:merge(State, #{user => User})};
-        {error, Error} ->
-            ?LOG_ERROR("Bad token ~p", [Error]),
-            {ok, cowboy_req:reply(401, Request), State}
+    case authenticate(Token) of
+        {ok, User} ->
+            Channels = miniature_engine_channels:by_key(User),
+            case length(Channels) < channels_limit() of
+                true ->
+                    {cowboy_websocket, Request, maps:merge(State, #{user => User})};
+                false ->
+                    {ok, cowboy_req:reply(429, Request), State}
+            end;
+        {error, _} -> {ok, cowboy_req:reply(401, Request), State}
     end.
 
 -spec websocket_init(state()) -> {ok, state()}.
@@ -113,6 +115,13 @@ token_from_header(Request) ->
 heartbeat() ->
     timer:send_interval(heartbeat_interval(), self(), ping).
 
+    authenticate(Token) ->
+        case jwt:decode(Token, jwt_key()) of
+            {ok, Decoded} -> {ok, maps:get(user_claim_key(), Decoded)};
+            {error, Error} -> {error, Error}
+        end.
+
+
 %% This process works within ranch application
 jwt_key() ->
     {ok, JwtKey} = application:get_env(miniature_engine, jwt_key),
@@ -125,6 +134,10 @@ user_claim_key() ->
 topic() ->
     {ok, Topic} = application:get_env(miniature_engine, kafka_producer_topic),
     Topic.
+
+channels_limit() ->
+    {ok, Limit} = application:get_env(miniature_engine, channels_limit_per_user),
+    Limit.
 
 cb_module() ->
     application:get_env(miniature_engine, callback_module, miniature_engine_hooks).

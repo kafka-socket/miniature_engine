@@ -19,6 +19,7 @@
         {kafka_endpoints, <<"${KAFKA_SERVERS}">>},
         {jwt_key, <<"${JWT_KEY}">>},
         {user_claim_key, <<"user_uid">>},
+        {channels_limit_per_user, ${CHANNELS_LIMIT_PER_USER}},
         {callback_module, miniature_engine_hooks_json_ack},
         {kafka_producer_topic, <<"${PRODUCER_TOPIC}">>},
         {kafka_consumer_topic, <<"${CONSUMER_TOPIC}">>}
