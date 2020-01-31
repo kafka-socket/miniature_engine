@@ -1,0 +1,67 @@
+name: Erlang CI
+
+## See https://help.github.com/en/actions/automating-your-workflow-with-github-actions/events-that-trigger-workflows#webhook-events for details
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    name: OTP ${{ matrix.otp }}
+    strategy:
+      matrix:
+        otp: [22.1, 21.3]
+
+    services:
+      zk:
+        image: "wurstmeister/zookeeper"
+      kafka:
+        image: "wurstmeister/kafka"
+        ports:
+          - 9092:9092
+        env:
+          KAFKA_ZOOKEEPER_CONNECT: "zk:2181"
+          KAFKA_ADVERTISED_HOST_NAME: "localhost"
+          KAFKA_CREATE_TOPICS: "ws-to-kafka:1:1,kafka-to-ws:1:1"
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: gleam-lang/setup-erlang@v1.0.0
+        with:
+          otp-version: 22.1
+      - uses: actions/cache@v1
+        with:
+          path: _build
+          key: ${{ runner.os }}-build-${{ hashFiles(format('{0}{1}', github.workspace, '/rebar.lock')) }}
+          restore-keys: |
+            ${{ runner.os }}-build-
+
+      # - uses: red-shirts/reviewdog-action-elvis@v1
+
+      - name: Compile
+        run: rebar3 compile
+
+      - name: Run elvis linter
+        run: rebar3 as elvis lint
+
+      - name: Run Common Tests
+        run: rebar3 ct
+
+      - name: Run Dialyzer
+        run: rebar3 dialyzer
+
+      - name: Send report to coveralls
+        run: rebar3 as test coveralls send
+        env:
+          COVERALLS_JOB_ID: OTP-${{ matrix.otp }}
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+
+      - name: Generate report for codecov
+        run: rebar3 as test covertool generate
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: _build/test/covertool/miniature_engine.covertool.xml
+          fail_ci_if_error: true
