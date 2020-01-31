@@ -53,7 +53,7 @@ jobs:
       - name: Send report to coveralls
         run: rebar3 as test coveralls send
         env:
-          COVERALLS_JOB_ID: OTP-${{ matrix.otp }}
+          COVERALLS_JOB_ID: OTP-${{ matrix.otp }}-${{ github.action }}
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
 
       - name: Generate report for codecov
