@@ -1,16 +1,16 @@
-name: Erlang CI
+name: ci
 
 ## See https://help.github.com/en/actions/automating-your-workflow-with-github-actions/events-that-trigger-workflows#webhook-events for details
 on: [push]
 
 jobs:
-  build:
+  tests:
     runs-on: ubuntu-latest
 
     name: OTP ${{ matrix.otp }}
     strategy:
       matrix:
-        otp: [22.1, 21.3]
+        otp: [22.2, 21.3]
 
     services:
       zk:
@@ -26,9 +26,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
       - uses: gleam-lang/setup-erlang@v1.0.0
         with:
           otp-version: 22.1
+
       - uses: actions/cache@v1
         with:
           path: _build
@@ -36,7 +38,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-build-
 
-      # - uses: red-shirts/reviewdog-action-elvis@v1
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cache/rebar3
+          key: ${{ runner.os }}-rebar3_cache-${{ hashFiles(format('{0}{1}', github.workspace, '/rebar.lock')) }}
+          restore-keys: |
+            ${{ runner.os }}-rebar3_cache-
 
       - name: Compile
         run: rebar3 compile
@@ -53,7 +60,7 @@ jobs:
       - name: Send report to coveralls
         run: rebar3 as test coveralls send
         env:
-          COVERALLS_JOB_ID: OTP-${{ matrix.otp }}-${{ github.action }}
+          COVERALLS_JOB_ID: ${{ github.action }}[OTP-${{ matrix.otp }}]
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
 
       - name: Generate report for codecov
